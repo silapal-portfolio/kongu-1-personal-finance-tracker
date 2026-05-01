@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FinanceAI — Smart Expense Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Cabinet+Grotesk:wght@400;500;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #080c14;
+  --surface: #0d1422;
+  --surface2: #111927;
+  --border: rgba(255,255,255,0.06);
+  --accent: #4ade80;
+  --accent2: #38bdf8;
+  --danger: #f87171;
+  --warning: #fbbf24;
+  --text: #f1f5f9;
+  --muted: #64748b;
+  --sidebar-w: 230px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Cabinet Grotesk', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  overflow-x: hidden;
+}
+
+/* ─── SIDEBAR ─── */
+.sidebar {
+  width: var(--sidebar-w);
+  min-height: 100vh;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  z-index: 100;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  margin-bottom: 32px;
+}
+
+.logo-icon {
+  width: 36px; height: 36px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+
+.logo-text {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.logo-text span { color: var(--accent); }
+
+.nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.2s;
+  border: none;
+  background: transparent;
+  text-align: left;
+  width: 100%;
+}
+
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+.nav-item.active { background: rgba(74,222,128,0.1); color: var(--accent); }
+
+.nav-item .nav-icon {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px;
+  font-size: 15px;
+  background: rgba(255,255,255,0.04);
+}
+
+.nav-item.active .nav-icon { background: rgba(74,222,128,0.15); }
+
+.nav-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  padding: 12px 14px 6px;
+}
+
+.api-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--surface2);
+  border-radius: 10px;
+  font-size: 12px;
+  font-family: 'DM Mono', monospace;
+}
+
+.status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--warning);
+  animation: pulse 2s infinite;
+}
+
+.status-dot.online { background: var(--accent); animation: none; }
+.status-dot.offline { background: var(--danger); animation: none; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ─── MAIN ─── */
+.main {
+  margin-left: var(--sidebar-w);
+  flex: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── PAGES ─── */
+.page { display: none; padding: 32px 36px; animation: fadeIn 0.3s ease; }
+.page.active { display: block; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 28px;
+}
+
+.page-header h1 {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+
+.page-header .sub {
+  color: var(--muted);
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+/* ─── EMPTY STATE ─── */
+#emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  text-align: center;
+  padding: 40px;
+  gap: 20px;
+}
+
+.empty-emoji { font-size: 80px; margin-bottom: 8px; }
+#emptyState h1 { font-size: 38px; font-weight: 800; letter-spacing: -1px; }
+#emptyState h1 span { color: var(--accent); }
+#emptyState p { color: var(--muted); font-size: 16px; max-width: 400px; line-height: 1.6; }
+
+/* ─── STATS GRID ─── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s;
+}
+
+.stat-card:hover { transform: translateY(-2px); }
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  filter: blur(30px);
+  opacity: 0.15;
+}
+
+.stat-card.green::before { background: var(--accent); }
+.stat-card.blue::before { background: var(--accent2); }
+.stat-card.red::before { background: var(--danger); }
+.stat-card.gold::before { background: var(--warning); }
+
+.stat-label {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 800;
+  margin: 8px 0 4px;
+  letter-spacing: -1px;
+  font-family: 'DM Mono', monospace;
+}
+
+.stat-card.green .stat-value { color: var(--accent); }
+.stat-card.blue .stat-value { color: var(--accent2); }
+.stat-card.red .stat-value { color: var(--danger); }
+.stat-card.gold .stat-value { color: var(--warning); }
+
+.stat-sub { font-size: 12px; color: var(--muted); }
+
+/* ─── CHARTS LAYOUT ─── */
+.charts-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.chart-card.full { grid-column: 1 / -1; }
+
+.chart-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 20px;
+}
+
+/* ─── FORM ─── */
+.form-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 32px;
+  max-width: 680px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.form-group input {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  color: var(--text);
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  outline: none;
+  transition: border-color 0.2s;
+  width: 100%;
+}
+
+.form-group input:focus { border-color: var(--accent); }
+.form-group input::placeholder { color: var(--muted); }
+
+/* ─── BUTTONS ─── */
+.btn-primary {
+  background: var(--accent);
+  color: #000;
+  border: none;
+  padding: 14px 28px;
+  border-radius: 12px;
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(74,222,128,0.3); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-outline:hover { border-color: var(--danger); color: var(--danger); }
+
+/* ─── AI RESULT ─── */
+.ai-panel {
+  margin-top: 24px;
+  background: var(--surface2);
+  border: 1px solid rgba(74,222,128,0.2);
+  border-radius: 16px;
+  padding: 24px;
+  display: none;
+  max-width: 680px;
+  animation: fadeIn 0.4s ease;
+}
+
+.ai-panel.visible { display: block; }
+
+.ai-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.ai-badge {
+  background: rgba(74,222,128,0.15);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.ai-results-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.ai-result-item {
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.ai-result-label { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.ai-result-value { font-size: 16px; font-weight: 700; }
+
+.category-tag {
+  display: inline-block;
+  background: rgba(56,189,248,0.15);
+  color: var(--accent2);
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.anomaly-normal { color: var(--accent); }
+.anomaly-fraud { color: var(--danger); }
+
+/* ─── TRANSACTIONS LIST ─── */
+.txn-list { display: flex; flex-direction: column; gap: 10px; }
+
+.txn-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: all 0.2s;
+}
+
+.txn-item:hover { border-color: rgba(255,255,255,0.12); transform: translateX(4px); }
+
+.txn-icon {
+  width: 42px; height: 42px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.txn-info { flex: 1; }
+.txn-merchant { font-size: 15px; font-weight: 700; }
+.txn-desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.txn-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.txn-cat { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 5px; }
+.txn-date { font-size: 11px; color: var(--muted); }
+
+.txn-amount {
+  font-family: 'DM Mono', monospace;
+  font-size: 17px;
+  font-weight: 500;
+  text-align: right;
+}
+
+.txn-anomaly-flag {
+  font-size: 18px;
+  margin-left: 4px;
+}
+
+/* ─── ALERT CARDS ─── */
+.alert-item {
+  background: rgba(248,113,113,0.08);
+  border: 1px solid rgba(248,113,113,0.3);
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.alert-icon { font-size: 24px; flex-shrink: 0; }
+.alert-title { font-size: 15px; font-weight: 700; color: var(--danger); }
+.alert-detail { font-size: 13px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+.alert-amount { font-family: 'DM Mono', monospace; font-size: 20px; font-weight: 500; color: var(--danger); white-space: nowrap; }
+
+/* ─── FORECAST ─── */
+.forecast-hero {
+  background: linear-gradient(135deg, rgba(74,222,128,0.1), rgba(56,189,248,0.1));
+  border: 1px solid rgba(74,222,128,0.2);
+  border-radius: 20px;
+  padding: 36px;
+  text-align: center;
+  margin-bottom: 24px;
+  max-width: 680px;
+}
+
+.forecast-amount {
+  font-size: 52px;
+  font-weight: 800;
+  font-family: 'DM Mono', monospace;
+  letter-spacing: -2px;
+  color: var(--accent);
+}
+
+.forecast-label { color: var(--muted); font-size: 14px; margin-top: 8px; }
+
+.insight-box {
+  background: var(--surface2);
+  border-left: 3px solid var(--warning);
+  border-radius: 0 10px 10px 0;
+  padding: 14px 18px;
+  font-size: 14px;
+  line-height: 1.6;
+  margin-top: 16px;
+  color: var(--text);
+}
+
+/* ─── ANALYTICS GRID ─── */
+.analytics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+/* ─── TABS ─── */
+.tab-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  background: var(--surface);
+  padding: 6px;
+  border-radius: 12px;
+  width: fit-content;
+  border: 1px solid var(--border);
+}
+
+.tab {
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--muted);
+  border: none;
+  background: transparent;
+  font-family: 'Cabinet Grotesk', sans-serif;
+  transition: all 0.2s;
+}
+
+.tab.active { background: var(--surface2); color: var(--text); }
+
+/* ─── EMPTY MSG ─── */
+.empty-msg {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--muted);
+}
+
+.empty-msg .icon { font-size: 40px; margin-bottom: 12px; }
+.empty-msg p { font-size: 14px; line-height: 1.6; }
+
+/* ─── FILTER ROW ─── */
+.filter-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.filter-row select, .filter-row input[type="month"] {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 14px;
+  color: var(--text);
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-size: 13px;
+  outline: none;
+}
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 3px; }
+
+/* ─── LOADING SPINNER ─── */
+.spinner {
+  width: 18px; height: 18px;
+  border: 2px solid rgba(0,0,0,0.3);
+  border-top-color: #000;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── TOAST ─── */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.toast {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: slideUp 0.3s ease, fadeOut 0.4s ease 2.6s forwards;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+.toast.success { border-color: rgba(74,222,128,0.3); }
+.toast.error { border-color: rgba(248,113,113,0.3); }
+.toast.warning { border-color: rgba(251,191,36,0.3); }
+
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeOut { to { opacity: 0; transform: translateY(-10px); } }
+</style>
+</head>
+
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-icon">💸</div>
+    <div class="logo-text">Finance<span>AI</span></div>
+  </div>
+
+  <nav class="nav">
+    <span class="nav-section-label">Overview</span>
+    <button class="nav-item active" data-page="dashboard">
+      <span class="nav-icon">📊</span> Dashboard
+    </button>
+    <button class="nav-item" data-page="add">
+      <span class="nav-icon">➕</span> Add Transaction
+    </button>
+
+    <span class="nav-section-label">Insights</span>
+    <button class="nav-item" data-page="analytics">
+      <span class="nav-icon">📈</span> Analytics
+    </button>
+    <button class="nav-item" data-page="forecast">
+      <span class="nav-icon">🔮</span> Forecast
+    </button>
+    <button class="nav-item" data-page="anomalies">
+      <span class="nav-icon">⚠️</span> Anomaly Alerts
+    </button>
+
+    <span class="nav-section-label">History</span>
+    <button class="nav-item" data-page="transactions">
+      <span class="nav-icon">📋</span> All Transactions
+    </button>
+  </nav>
+
+  <div class="api-status">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">Connecting…</span>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- EMPTY STATE -->
+  <div id="emptyState">
+    <div class="empty-emoji">💰</div>
+    <h1>Track Your <span>Finances</span><br>With AI</h1>
+    <p>Add your first transaction and get instant AI-powered category detection, anomaly alerts, and spending forecasts.</p>
+    <button class="btn-primary" onclick="goToAdd()">✦ Add First Transaction</button>
+  </div>
+
+  <!-- APP CONTENT (hidden until first transaction) -->
+  <div id="appContent" style="display:none; width:100%;">
+
+    <!-- ═══ DASHBOARD ═══ -->
+    <section id="page-dashboard" class="page active">
+      <div class="page-header">
+        <div>
+          <h1>Dashboard</h1>
+          <div class="sub" id="currentMonth"></div>
+        </div>
+        <button class="btn-primary" onclick="goToAdd()">+ Add Transaction</button>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card green">
+          <div class="stat-label">Total Spent</div>
+          <div class="stat-value" id="totalSpent">₹0</div>
+          <div class="stat-sub" id="txnCount">0 transactions</div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-label">This Month</div>
+          <div class="stat-value" id="monthlySpent">₹0</div>
+          <div class="stat-sub" id="monthLabel">—</div>
+        </div>
+        <div class="stat-card gold">
+          <div class="stat-label">Top Category</div>
+          <div class="stat-value" id="topCategory" style="font-size:20px;">—</div>
+          <div class="stat-sub" id="topCategoryAmt">₹0</div>
+        </div>
+        <div class="stat-card red">
+          <div class="stat-label">Anomalies</div>
+          <div class="stat-value" id="anomalyCount">0</div>
+          <div class="stat-sub">flagged transactions</div>
+        </div>
+      </div>
+
+      <div class="charts-row">
+        <div class="chart-card">
+          <div class="chart-title">Daily Spending Trend</div>
+          <canvas id="trendChart" height="160"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">By Category</div>
+          <canvas id="pieChart" height="160"></canvas>
+        </div>
+      </div>
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <div style="font-size:14px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;">Recent Transactions</div>
+          <button class="btn-outline" onclick="navigate('transactions')">See all →</button>
+        </div>
+        <div id="recentList" class="txn-list"></div>
+      </div>
+    </section>
+
+    <!-- ═══ ADD TRANSACTION ═══ -->
+    <section id="page-add" class="page">
+      <div class="page-header">
+        <div>
+          <h1>Add Transaction</h1>
+          <div class="sub">AI will instantly classify and check for anomalies</div>
+        </div>
+      </div>
+
+      <div class="form-card">
+        <div class="form-grid">
+          <div class="form-group" style="grid-column:1/-1;">
+            <label>Merchant / Place</label>
+            <input type="text" id="merchantInput" placeholder="e.g. Swiggy, Amazon, Petrol Pump" />
+          </div>
+          <div class="form-group">
+            <label>Amount (₹)</label>
+            <input type="number" id="amountInput" placeholder="e.g. 350" min="0" />
+          </div>
+          <div class="form-group">
+            <label>Date</label>
+            <input type="date" id="dateInput" />
+          </div>
+          <div class="form-group" style="grid-column:1/-1;">
+            <label>What did you buy?</label>
+            <input type="text" id="descInput" placeholder="e.g. biryani order, monthly subscription, fuel" />
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;align-items:center;margin-top:8px;">
+          <button class="btn-primary" id="addBtn" onclick="addTransaction()">
+            <span id="addBtnText">✦ Classify &amp; Add</span>
+          </button>
+          <button class="btn-outline" onclick="clearForm()">Clear</button>
+        </div>
+      </div>
+
+      <!-- AI RESULT PANEL -->
+      <div class="ai-panel" id="aiResultPanel">
+        <div class="ai-panel-header">
+          <span class="ai-badge">✦ AI Analysis</span>
+          <span style="font-size:13px;color:var(--muted);margin-left:8px;">Transaction processed</span>
+        </div>
+        <div class="ai-results-grid">
+          <div class="ai-result-item">
+            <div class="ai-result-label">Category</div>
+            <div class="ai-result-value"><span class="category-tag" id="resultCategory">—</span></div>
+          </div>
+          <div class="ai-result-item">
+            <div class="ai-result-label">Anomaly Status</div>
+            <div class="ai-result-value" id="resultAnomaly">—</div>
+          </div>
+          <div class="ai-result-item" style="grid-column:1/-1;">
+            <div class="ai-result-label">Insight</div>
+            <div class="ai-result-value" id="resultInsight" style="font-size:14px;font-weight:500;color:var(--muted);line-height:1.5;">—</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ ANALYTICS ═══ -->
+    <section id="page-analytics" class="page">
+      <div class="page-header">
+        <div>
+          <h1>Analytics</h1>
+          <div class="sub">Spending patterns over time</div>
+        </div>
+      </div>
+
+      <div class="tab-row">
+        <button class="tab active" onclick="setAnalyticsTab('daily', this)">Daily</button>
+        <button class="tab" onclick="setAnalyticsTab('weekly', this)">Weekly</button>
+        <button class="tab" onclick="setAnalyticsTab('monthly', this)">Monthly</button>
+      </div>
+
+      <div class="chart-card full" style="margin-bottom:16px;">
+        <div class="chart-title" id="analyticsChartTitle">Daily Spending</div>
+        <canvas id="analyticsChart" height="200"></canvas>
+      </div>
+
+      <div class="analytics-grid">
+        <div class="chart-card">
+          <div class="chart-title">Category Breakdown</div>
+          <canvas id="catChart" height="220"></canvas>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Top Categories</div>
+          <div id="catRankList" style="margin-top:8px;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ FORECAST ═══ -->
+    <section id="page-forecast" class="page">
+      <div class="page-header">
+        <div>
+          <h1>Spending Forecast</h1>
+          <div class="sub">LSTM model prediction for next month</div>
+        </div>
+      </div>
+
+      <div class="forecast-hero">
+        <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">Predicted Next Month</div>
+        <div class="forecast-amount" id="forecastBig">₹—</div>
+        <div class="forecast-label" id="forecastBadge">Add 30+ transactions to unlock</div>
+        <div class="insight-box" id="forecastInsightBox" style="display:none;text-align:left;"></div>
+      </div>
+
+      <div class="chart-card" style="max-width:780px;">
+        <div class="chart-title">Last 30 Days + Forecast</div>
+        <canvas id="forecastChart" height="200"></canvas>
+      </div>
+    </section>
+
+    <!-- ═══ ANOMALIES ═══ -->
+    <section id="page-anomalies" class="page">
+      <div class="page-header">
+        <div>
+          <h1>Anomaly Alerts</h1>
+          <div class="sub">Unusual transactions flagged by Isolation Forest</div>
+        </div>
+      </div>
+      <div id="anomalyList">
+        <div class="empty-msg"><div class="icon">✅</div><p>No anomalies detected yet.<br/>Your spending looks normal.</p></div>
+      </div>
+    </section>
+
+    <!-- ═══ ALL TRANSACTIONS ═══ -->
+    <section id="page-transactions" class="page">
+      <div class="page-header">
+        <div>
+          <h1>All Transactions</h1>
+          <div class="sub" id="txnPageCount"></div>
+        </div>
+        <button class="btn-outline" onclick="clearAllTransactions()">🗑 Clear All</button>
+      </div>
+
+      <div class="filter-row">
+        <select id="filterCat" onchange="renderAllTransactions()">
+          <option value="">All Categories</option>
+        </select>
+        <input type="month" id="filterMonth" onchange="renderAllTransactions()" />
+      </div>
+
+      <div id="allTransactionsList" class="txn-list"></div>
+    </section>
+
+  </div><!-- /appContent -->
+
+</main>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

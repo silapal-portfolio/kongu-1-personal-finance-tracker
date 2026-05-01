@@ -1,0 +1,66 @@
+body {
+  margin: 0;
+  font-family: 'Syne', sans-serif;
+  background: #0f172a;
+  color: white;
+}
+
+.sidebar {
+  width: 220px;
+  height: 100vh;
+  background: #020617;
+  position: fixed;
+  padding: 20px;
+}
+
+.main {
+  margin-left: 240px;
+  padding: 20px;
+}
+
+.nav-item {
+  display: block;
+  padding: 10px;
+  color: #94a3b8;
+  text-decoration: none;
+}
+
+.nav-item.active {
+  color: white;
+  background: #1e293b;
+}
+
+.card, .chart-card, .section-card {
+  background: #1e293b;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+input, button {
+  padding: 10px;
+  margin: 5px;
+  border-radius: 6px;
+  border: none;
+}
+
+button {
+  background: #3b82f6;
+  color: white;
+  cursor: pointer;
+}
+.card {
+  background: linear-gradient(145deg, #1e293b, #0f172a);
+  box-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
+
+.alert {
+  background: #7f1d1d;
+  padding: 10px;
+  border-radius: 6px;
+  margin: 5px 0;
+}
+
+button:hover {
+  transform: scale(1.05);
+}
